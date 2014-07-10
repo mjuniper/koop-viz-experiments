@@ -11,7 +11,7 @@ body {
   overflow: hidden;
 }
 
-.world {
+canvas {
   position:absolute;
   top: 0px;
   z-index: -1;
@@ -48,6 +48,7 @@ body {
 .tile path.c4 {
   fill:#d1e5f0;
 }
+
 .tile path.c5 {
   fill:#f7f7f7;
 }
@@ -80,7 +81,7 @@ body {
 
 path {
   fill: #444;
-  stroke:#888;
+  stroke:#EEE;
 }
 
 </style>
@@ -107,6 +108,9 @@ var zoom = d3.behavior.zoom()
     .scale(1 << 10)
     .scaleExtent([1 << 9, 1 << 23])
     .translate([width / 2, height / 2])
+//    .scale(projection.scale() * 2 * Math.PI)
+//    .scaleExtent([1 << 20, 1 << 23])
+//    .translate(projection([-74.0064, 40.7142]).map(function(x) { return -x; }))
     .on("zoom", zoomed);
 
 var map = d3.select("body").append("div")
@@ -114,32 +118,44 @@ var map = d3.select("body").append("div")
     .style("width", width + "px")
     .style("height", height + "px")
     .call(zoom)
+    .on("mousemove", mousemoved);
 
 //svg map
 var projection = d3.geo.mercator()
-  .scale(zoom.scale() / 2 / Math.PI)
-  .translate(zoom.translate());
+    .translate([width / 2, height / 2]);
 
+var graticule = d3.geo.graticule();
 
-var path = d3.geo.path().projection( projection );
+var canvas = d3.select("body").append("canvas")
+    .attr("width", width)
+    .attr("height", height);
 
+<<<<<<< HEAD
 var svg = d3.select(".map").append("svg")
     .attr('class', 'world')
     .style("width", width + "px")
     .style("height", height + "px")
     .call(zoom)
+=======
+var context = canvas.node().getContext("2d");
+>>>>>>> 1bf1a6e86115a5d51abdae11299d972730fed8bc
 
-d3.json("world-110m.json", function(error, world) {
-  console.log('world', world);
+var path = d3.geo.path()
+    .projection(projection)
+    .context(context);
 
-  svg.append("g")
-  .attr("class", "states")
-  .selectAll("path")
-    .data(topojson.feature(world, world.objects.countries).features)
-  .enter().append("path")
-    .attr("d", path);
 
+var land;
+d3.json("data/world-110m.json", function(error, world) {
+  land = topojson.feature(world, world.objects.countries);
+    context.clearRect(0, 0, width, height);
+    
+    context.beginPath();
+    path(land);
+    context.fillStyle = "#333";
+    context.fill();
 });
+
 
 var layer = map.append("div")
     .attr("class", "layer");
@@ -149,7 +165,10 @@ var info = map.append("div")
 
 var scale = d3.scale.quantile()
     .domain([-20,70])
-    .range(['c1','c2','c3','c4','c5','c6','c7','c8','c9','c10']);
+    //.range(['c1','c2','c3','c4','c5','c6','c7','c8','c9','c10']);
+//    .range(['#00ffff','#64f0ff','#87e1ff','#a0d0ff','#b5c0ff','#c6adff','#d49bff','#e185ff','#ec6dff','#ff1edb']);
+    //.range(['#2166ac', '#4393c3', '#92c5de', '#d1e5f0', '#f7f7f7', '#fddbc7', '#f7f7f7', '#fddbc7', '#f4a582', '#d6604d', '#b2182b', '#fa8072'].reverse());
+    .range(['#2166ac', '#4393c3', '#92c5de', '#fddbc7', '#f4a582', '#d6604d', '#b2182b', '#fa8072']);
 
 zoomed();
 
@@ -174,6 +193,7 @@ function zoomed() {
       .style("top", function(d) { return d[1] * 256 + "px"; })
       .each(function(d) {
         var svg = d3.select(this);
+
         //var host = "http://localhost:1337/climate/temperature/tiles/";
         var host = "http://koop.dc.esri.com/climate/temperature/tiles/";
         this._xhr = d3.json(host + d[2] + "/" + d[0] + "/" + d[1] + ".json", function(error, json) {
@@ -182,23 +202,32 @@ function zoomed() {
           tilePath.projection()
               .translate([k / 2 - d[0] * 256, k / 2 - d[1] * 256]) // [0°,0°] in pixels
               .scale(k / 2 / Math.PI);
-
+          if (json.features){
           svg.selectAll("path")
               .data(json.features) //.sort(function(a, b) { return a.properties.sort_key - b.properties.sort_key; }))
             .enter().append("path")
               .attr("class", function(d) { return scale(d.properties.temp-273.15); })
               .attr("d", tilePath);
+          }
         });
       });
 
+
+  //update canvas
+  context.clearRect(0, 0, width, height);
   projection
     .scale(zoom.scale() / 2 / Math.PI)
     .translate(zoom.translate());
 
-  svg.selectAll("path").attr("d", path);
+  context.beginPath();
+  path(land);
+  context.fill();
 }
 
 
+function mousemoved() {
+  //info.text(formatLocation(projection.invert(d3.mouse(this)), zoom.scale()));
+}
 
 function matrix3d(scale, translate) {
   var k = scale / 256, r = scale % 1 ? Number : Math.round;
@@ -211,5 +240,12 @@ function prefixMatch(p) {
   return "";
 }
 
+function formatLocation(p, k) {
+  var format = d3.format("." + Math.floor(Math.log(k) / 2 - 2) + "f");
+  return (p[1] < 0 ? format(-p[1]) + "°S" : format(p[1]) + "°N") + " "
+       + (p[0] < 0 ? format(-p[0]) + "°W" : format(p[0]) + "°E");
+}
+
 </script>
+
 

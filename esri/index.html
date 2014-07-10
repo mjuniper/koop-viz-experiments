@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
-    <title>Wind Animation</title>
+    <title>Grid Mapping</title>
 
     <link rel="stylesheet" href="http://js.arcgis.com/3.8/js/esri/css/esri.css">
 
@@ -60,7 +60,7 @@
         };
 
         map = new Map("mapCanvas", {
-          center: [-99.076, 39.132],
+          center: [0, 0],
           zoom: 3,
           basemap: "darkgray"
         });
@@ -72,7 +72,7 @@
           // Add raster layer
           if ( canvasSupport ) {
             rasterLayer = new RasterLayer(null, {
-              opacity: 0.55
+              opacity: 0.95
             });
             map.addLayer(rasterLayer);
             
@@ -81,7 +81,7 @@
             map.on("zoom-start", redraw);
 
             var layersRequest = esriRequest({
-              url: './temps.json',
+              url: './temps2.json',
               content: {},
               handleAs: "json"
             });
@@ -108,7 +108,7 @@
           rasterLayer._element.width = map.width;
           rasterLayer._element.height = map.height;
 
-          windy.stop();
+          //windy.stop();
 
           var extent = map.geographicExtent;
           setTimeout(function(){
@@ -118,6 +118,7 @@
               map.height, 
               [[extent.xmin, extent.ymin],[extent.xmax, extent.ymax]], 
               function(){
+                rasterLayer._element.getContext("2d").clearRect(0, 0, map.width, map.height);
                 rasterLayer._element.getContext("2d").putImageData(windy.imageData, 0, 0);
               });
 
